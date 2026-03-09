@@ -27,7 +27,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap'
 }).addTo(map);
 
-fetch("https://api.allorigins.win/raw?url=https://vtr.valasztas.hu/ogy2026/data/03091300/ver/Kulkepviselet.json")    
+fetch("data.json")    
 .then(response => response.json())
 .then(data => {
 
