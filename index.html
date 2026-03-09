@@ -33,42 +33,43 @@ fetch("data.json")
 
 data.list.forEach(place => {
 
+// Use reliable coordinates
 let coords = place.kuvi_gps || place.gps;
 
-let cleaned = coords
-.replace(/[NSEW]/g,"")
-.replace(/\s/g,"");
+// Clean the string: remove N/S/E/W and extra spaces
+let cleaned = coords.replace(/[NSEW]/g, "").replace(/\s/g, "");
 
+// Split into latitude and longitude
 let parts = cleaned.split(",");
 
 let lat = parseFloat(parts[0]);
 let lon = parseFloat(parts[1]);
 
+// Skip invalid coordinates
 if (isNaN(lat) || isNaN(lon)) return;
 
-let voters = place.letszam;
+// Compute circle radius (scaled)
+let radius = Math.sqrt(place.letszam) * 1.2;
 
-let radius = Math.sqrt(voters) * 1.2;
-
+// Determine accessibility text
 let accessibility = place.akadaly === "I" ? "Accessible" : "Not accessible";
 
+// Build popup content
 let popup = `
 <b>${place.taz_nev_en}</b><br>
-Registered voters: ${voters}<br>
+Registered voters: ${place.letszam}<br>
 Accessibility: ${accessibility}<br>
 Voting hours: ${place.idotartam}
 `;
 
-L.circleMarker([lat,lon],{
-radius: radius,
-color:"#2A81CB",
-fillColor:"#2A81CB",
-fillOpacity:0.45,
-weight:1
-})
-})
-.addTo(map)
-.bindPopup(popup);
+// Draw the circle on the map
+L.circleMarker([lat, lon], {
+    radius: radius,
+    color: "#2A81CB",
+    fillColor: "#2A81CB",
+    fillOpacity: 0.45,
+    weight: 1
+}).addTo(map).bindPopup(popup);
 
 });
 
