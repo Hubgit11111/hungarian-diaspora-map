@@ -60,7 +60,7 @@ Voting hours: ${place.idotartam}
 `;
 
 L.circleMarker([lat,lon],{
-radius: radius,
+let radius = Math.sqrt(voters) * 1.2;
 color:"#2A81CB",
 fillColor:"#2A81CB",
 fillOpacity:0.6
