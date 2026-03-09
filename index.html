@@ -40,12 +40,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap'
 }).addTo(map);
 
-// Robust DMS/Decimal parser (Montreal-ready)
+// Robust DMS/Decimal parser
 function parseCoordinates(coordStr){
     if(!coordStr) return [NaN, NaN];
     coordStr = coordStr.replace(/[′’]/g,"'").replace(/[″“”]/g,'"').replace(/\u00A0/g,' ').trim();
 
-    // Match all DMS with decimal seconds
     const dmsMatches = coordStr.match(/(\d+)[°º](\d+)'([\d.]+)["″]?([NSEW])/gi);
     if(dmsMatches && dmsMatches.length >= 2){
         const dmsToDec = dms => {
@@ -59,13 +58,11 @@ function parseCoordinates(coordStr){
             if(dir==='S'||dir==='W') dec*=-1;
             return dec;
         };
-        // First match = latitude, second = longitude
         let lat = dmsToDec(dmsMatches[0]);
         let lon = dmsToDec(dmsMatches[1]);
         return [lat, lon];
     }
 
-    // Decimal with optional degree symbol + N/S/E/W
     let decimalMatch = coordStr.match(/(-?\d+\.?\d*)[°]?\s*([NS])?,?\s*(-?\d+\.?\d*)[°]?\s*([EW])?/i);
     if(decimalMatch){
         let lat = parseFloat(decimalMatch[1]);
@@ -77,7 +74,6 @@ function parseCoordinates(coordStr){
         return [lat, lon];
     }
 
-    // Simple fallback: space or comma separated decimal
     let cleaned = coordStr.replace(/[NSEW]/gi,"").replace(/\s+/g,",");
     let parts = cleaned.split(",");
     if(parts.length < 2) return [NaN, NaN];
@@ -92,7 +88,7 @@ function parseCoordinates(coordStr){
 let markers=[];
 
 // Load JSON data
-fetch("data.json") // replace with your actual JSON path
+fetch("data.json") // replace with your JSON path
 .then(res => res.json())
 .then(data => {
     data.list.forEach(place => {
@@ -106,10 +102,14 @@ fetch("data.json") // replace with your actual JSON path
 
         let accessibility = place.akadaly==='I' ? "Accessible" : "Not accessible";
 
-        let popup = `<b>${place.taz_nev_en}</b><br>
+        let popup = `
+<b>${place.taz_nev_en}</b><br>
 Registered voters: ${place.letszam}<br>
+<a href="https://vtr.valasztas.hu/ogy2026/valasztopolgaroknak/kulkepviseletek-listaja?tab=kulkepviseletek-listaja" target="_blank">Venue address</a><br>
 Accessibility: ${accessibility}<br>
-Voting hours: ${place.idotartam}`;
+Voting hours: ${place.idotartam}<br>
+<a href="https://magyarorszag.hu/szuf_ugyleiras?id=23c2f24f-86e9-48a3-8768-faa3ad6638bb&_n=kulkepviseleti_nevjegyzekbe_vetel_az_idokozi_orszaggyulesi_valasztason" target="_blank"><b>REGISTER TO VOTE NOW</b></a>
+`;
 
         let marker = L.circleMarker([lat,lon],{
             radius: Math.sqrt(place.letszam),
@@ -122,7 +122,6 @@ Voting hours: ${place.idotartam}`;
         markers.push({marker: marker, voters: place.letszam});
     });
 
-    // Dynamic bubble scaling
     function updateMarkerSize(){
         let zoom = map.getZoom();
         markers.forEach(m => {
