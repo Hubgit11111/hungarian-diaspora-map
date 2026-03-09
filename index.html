@@ -40,71 +40,67 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap'
 }).addTo(map);
 
-// Convert a single DMS string to decimal
-function dmsToDecimal(dms) {
-    if(!dms) return NaN;
-    // Normalize primes and quotes
-    dms = dms.replace(/[′’]/g,"'").replace(/[″“”]/g,'"').replace(/\u00A0/g,' ').trim();
-    let match = dms.match(/(\d+)[°º](\d+)'([\d.]+)"?([NSEW])/i);
-    if(!match) return NaN;
-    let deg=parseFloat(match[1]);
-    let min=parseFloat(match[2]);
-    let sec=parseFloat(match[3]);
-    let dir=match[4].toUpperCase();
-    let dec=deg + min/60 + sec/3600;
-    if(dir==='S'||dir==='W') dec*=-1;
-    return dec;
-}
-
-// Robust coordinate parser
+// Robust DMS/Decimal parser (Montreal-ready)
 function parseCoordinates(coordStr){
-    if(!coordStr) return [NaN,NaN];
-    coordStr = coordStr.replace(/\u00A0/g,' ').trim();
+    if(!coordStr) return [NaN, NaN];
+    coordStr = coordStr.replace(/[′’]/g,"'").replace(/[″“”]/g,'"').replace(/\u00A0/g,' ').trim();
 
-    // 1️⃣ Try DMS (Montreal style) with space or comma separator
-    let dmsMatches = coordStr.match(/(\d+)[°º](\d+)'([\d.]+)["″]?([NSEW])/gi);
+    // Match all DMS with decimal seconds
+    const dmsMatches = coordStr.match(/(\d+)[°º](\d+)'([\d.]+)["″]?([NSEW])/gi);
     if(dmsMatches && dmsMatches.length >= 2){
-        let lat = dmsToDecimal(dmsMatches[0]);
-        let lon = dmsToDecimal(dmsMatches[1]);
-        return [lat, lon]; // first = latitude, second = longitude
+        const dmsToDec = dms => {
+            let m = dms.match(/(\d+)[°º](\d+)'([\d.]+)"?([NSEW])/i);
+            if(!m) return NaN;
+            let deg = parseFloat(m[1]);
+            let min = parseFloat(m[2]);
+            let sec = parseFloat(m[3]);
+            let dir = m[4].toUpperCase();
+            let dec = deg + min/60 + sec/3600;
+            if(dir==='S'||dir==='W') dec*=-1;
+            return dec;
+        };
+        // First match = latitude, second = longitude
+        let lat = dmsToDec(dmsMatches[0]);
+        let lon = dmsToDec(dmsMatches[1]);
+        return [lat, lon];
     }
 
-    // 2️⃣ Decimal with optional degree symbol and N/S/E/W (Bern style)
+    // Decimal with optional degree symbol + N/S/E/W
     let decimalMatch = coordStr.match(/(-?\d+\.?\d*)[°]?\s*([NS])?,?\s*(-?\d+\.?\d*)[°]?\s*([EW])?/i);
     if(decimalMatch){
-        let lat=parseFloat(decimalMatch[1]);
-        let lon=parseFloat(decimalMatch[3]);
-        let latDir=(decimalMatch[2]||'').toUpperCase();
-        let lonDir=(decimalMatch[4]||'').toUpperCase();
+        let lat = parseFloat(decimalMatch[1]);
+        let lon = parseFloat(decimalMatch[3]);
+        let latDir = (decimalMatch[2]||'').toUpperCase();
+        let lonDir = (decimalMatch[4]||'').toUpperCase();
         if(latDir==='S') lat*=-1;
         if(lonDir==='W') lon*=-1;
-        return [lat,lon];
+        return [lat, lon];
     }
 
-    // 3️⃣ Fallback: simple comma or space-separated decimal
+    // Simple fallback: space or comma separated decimal
     let cleaned = coordStr.replace(/[NSEW]/gi,"").replace(/\s+/g,",");
     let parts = cleaned.split(",");
-    if(parts.length<2) return [NaN,NaN];
-    let lat=parseFloat(parts[0]);
-    let lon=parseFloat(parts[1]);
+    if(parts.length < 2) return [NaN, NaN];
+    let lat = parseFloat(parts[0]);
+    let lon = parseFloat(parts[1]);
     if(coordStr.toUpperCase().includes("S")) lat*=-1;
     if(coordStr.toUpperCase().includes("W")) lon*=-1;
-    return [lat,lon];
+    return [lat, lon];
 }
 
 // Store markers
 let markers=[];
 
-// Load JSON
-fetch("data.json") // make sure your JSON file path is correct
-.then(res=>res.json())
-.then(data=>{
-    data.list.forEach(place=>{
+// Load JSON data
+fetch("data.json") // replace with your actual JSON path
+.then(res => res.json())
+.then(data => {
+    data.list.forEach(place => {
         let coords = place.kuvi_gps || place.gps;
         let [lat, lon] = parseCoordinates(coords);
 
         if(isNaN(lat) || isNaN(lon)){
-            console.warn("Skipped city:",place.taz_nev_en,"coords:",coords);
+            console.warn("Skipped city:", place.taz_nev_en, "coords:", coords);
             return;
         }
 
@@ -123,28 +119,28 @@ Voting hours: ${place.idotartam}`;
             weight:1
         }).addTo(map).bindPopup(popup);
 
-        markers.push({marker:marker,voters:place.letszam});
+        markers.push({marker: marker, voters: place.letszam});
     });
 
     // Dynamic bubble scaling
     function updateMarkerSize(){
-        let zoom=map.getZoom();
-        markers.forEach(m=>{
+        let zoom = map.getZoom();
+        markers.forEach(m => {
             let scale = Math.pow(zoom/5,1.2);
-            let minRadius=2;
-            let newRadius = Math.max(Math.sqrt(m.voters)*scale,minRadius);
+            let minRadius = 2;
+            let newRadius = Math.max(Math.sqrt(m.voters)*scale, minRadius);
             m.marker.setRadius(newRadius);
         });
     }
 
-    map.on('zoomend',updateMarkerSize);
+    map.on('zoomend', updateMarkerSize);
     updateMarkerSize();
 
-    document.getElementById('markerCount').innerText = "City markers displayed: "+markers.length;
+    document.getElementById('markerCount').innerText = "City markers displayed: " + markers.length;
 })
-.catch(error=>{
-    console.error("Failed to load data:",error);
-    document.getElementById('markerCount').innerText="Failed to load markers";
+.catch(error => {
+    console.error("Failed to load data:", error);
+    document.getElementById('markerCount').innerText = "Failed to load markers";
 });
 </script>
 
