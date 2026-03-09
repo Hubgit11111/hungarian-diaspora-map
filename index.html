@@ -40,10 +40,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap'
 }).addTo(map);
 
-// Convert a single DMS string to decimal
+// Convert DMS string (including fancy primes) to decimal
 function dmsToDecimal(dms) {
     if (!dms) return NaN;
-    // Replace fancy primes with ASCII equivalents
+    // Replace fancy primes and quotes with ASCII
     dms = dms.replace(/[′’]/g, "'").replace(/[″“”]/g, '"').trim();
     let parts = dms.match(/(\d+)[°|º](\d+)'([\d.]+)"?([NSEW])/i);
     if (!parts) return NaN;
@@ -56,35 +56,45 @@ function dmsToDecimal(dms) {
     return dec;
 }
 
-// Robust coordinate parser for decimal + DMS
+// Robust GPS parser for all known formats
 function parseCoordinates(coordStr) {
     if (!coordStr) return [NaN, NaN];
 
-    // Remove non-breaking spaces
-    coordStr = coordStr.replace(/\u00A0/g, ' ').trim();
+    coordStr = coordStr.replace(/\u00A0/g, ' ').trim(); // remove non-breaking spaces
 
-    // DMS with degree, prime, or second symbols
-    if (coordStr.match(/[°′″]/)) {
-        let matches = coordStr.match(/(\d+)[°|º](\d+)'([\d.]+)"?[NSEW]/gi);
+    // Check for DMS (with primes)
+    if (coordStr.match(/\d+[°|º]\d+'[\d.]+["″]/)) {
+        let matches = coordStr.match(/(\d+)[°|º](\d+)'([\d.]+)["″]?[NSEW]/gi);
         if (!matches || matches.length < 2) return [NaN, NaN];
         let lat = dmsToDecimal(matches[0]);
         let lon = dmsToDecimal(matches[1]);
         return [lat, lon];
-    } else {
-        // Decimal with optional N/S/E/W
-        let cleaned = coordStr.replace(/[NSEW]/gi,"").replace(/\s/g,"");
-        let parts = cleaned.split(",");
-        if (parts.length < 2) return [NaN, NaN];
-        let lat = parseFloat(parts[0]);
-        let lon = parseFloat(parts[1]);
-        // Apply N/S/E/W manually
-        if (coordStr.toUpperCase().includes("S")) lat *= -1;
-        if (coordStr.toUpperCase().includes("W")) lon *= -1;
+    }
+
+    // Check for decimal with degree symbol and space (Bern)
+    let decimalDegMatch = coordStr.match(/(-?\d+\.?\d*)[°]?\s*([NS])?,?\s*(-?\d+\.?\d*)[°]?\s*([EW])?/i);
+    if (decimalDegMatch) {
+        let lat = parseFloat(decimalDegMatch[1]);
+        let lon = parseFloat(decimalDegMatch[3]);
+        let latDir = (decimalDegMatch[2] || '').toUpperCase();
+        let lonDir = (decimalDegMatch[4] || '').toUpperCase();
+        if (latDir === 'S') lat *= -1;
+        if (lonDir === 'W') lon *= -1;
         return [lat, lon];
     }
+
+    // Fallback: simple decimal with optional N/S/E/W
+    let cleaned = coordStr.replace(/[NSEW]/gi,"").replace(/\s/g,"");
+    let parts = cleaned.split(",");
+    if (parts.length < 2) return [NaN, NaN];
+    let lat = parseFloat(parts[0]);
+    let lon = parseFloat(parts[1]);
+    if (coordStr.toUpperCase().includes("S")) lat *= -1;
+    if (coordStr.toUpperCase().includes("W")) lon *= -1;
+    return [lat, lon];
 }
 
-// Store markers for dynamic resizing
+// Store markers
 let markers = [];
 
 fetch("data.json")
@@ -110,7 +120,7 @@ Voting hours: ${place.idotartam}
 `;
 
         let marker = L.circleMarker([lat, lon], {
-            radius: Math.sqrt(place.letszam), // base radius
+            radius: Math.sqrt(place.letszam),
             color: "#2A81CB",
             fillColor: "#2A81CB",
             fillOpacity: 0.45,
@@ -120,7 +130,7 @@ Voting hours: ${place.idotartam}
         markers.push({marker: marker, voters: place.letszam});
     });
 
-    // Dynamic scaling with zoom
+    // Scale bubbles with zoom
     function updateMarkerSize() {
         let zoom = map.getZoom();
         markers.forEach(m => {
@@ -134,7 +144,7 @@ Voting hours: ${place.idotartam}
     map.on('zoomend', updateMarkerSize);
     updateMarkerSize();
 
-    // Display number of markers
+    // Marker count display
     document.getElementById('markerCount').innerText = "City markers displayed: " + markers.length;
 
 })
