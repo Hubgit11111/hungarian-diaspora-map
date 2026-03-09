@@ -29,11 +29,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap'
 }).addTo(map);
 
-// Convert DMS to decimal degrees
+// Convert single DMS string to decimal
 function dmsToDecimal(dms) {
-    if (!dms) return NaN;
     let parts = dms.match(/(\d+)[°|º](\d+)'([\d.]+)"?([NSEW])/i);
-    if (!parts) return parseFloat(dms.replace(/[NSEW]/g,"").replace(/\s/g,""));
+    if (!parts) return NaN;
     let deg = parseFloat(parts[1]);
     let min = parseFloat(parts[2]);
     let sec = parseFloat(parts[3]);
@@ -41,6 +40,26 @@ function dmsToDecimal(dms) {
     let dec = deg + min/60 + sec/3600;
     if (dir === "S" || dir === "W") dec *= -1;
     return dec;
+}
+
+// Robust coordinate parser
+function parseCoordinates(coordStr) {
+    if (!coordStr) return [NaN, NaN];
+
+    if (coordStr.includes("°")) {
+        // Match lat and lon DMS
+        let matches = coordStr.match(/(\d+)[°|º]\d+'[\d.]+\"[NS]|[EW]/gi);
+        if (!matches || matches.length < 2) return [NaN, NaN];
+        let lat = dmsToDecimal(matches[0]);
+        let lon = dmsToDecimal(matches[1]);
+        return [lat, lon];
+    } else {
+        // Decimal format
+        let cleaned = coordStr.replace(/[NSEW]/g,"").replace(/\s/g,"");
+        let parts = cleaned.split(",");
+        if (parts.length < 2) return [NaN, NaN];
+        return [parseFloat(parts[0]), parseFloat(parts[1])];
+    }
 }
 
 // Store markers for dynamic resizing
@@ -51,32 +70,12 @@ fetch("data.json")
 .then(data => {
 
     data.list.forEach(place => {
-
-        let lat, lon;
-
-        // Use reliable coordinates
         let coords = place.kuvi_gps || place.gps;
-
-        if (coords.includes("°")) {
-            // DMS format
-            let [latStr, lonStr] = coords.split(/,| /).filter(s=>s.trim()!=="");
-            lat = dmsToDecimal(latStr);
-            lon = dmsToDecimal(lonStr);
-        } else {
-            // Decimal format
-            let cleaned = coords.replace(/[NSEW]/g,"").replace(/\s/g,"");
-            let parts = cleaned.split(",");
-            lat = parseFloat(parts[0]);
-            lon = parseFloat(parts[1]);
-        }
-
-        // Skip invalid coordinates
+        let [lat, lon] = parseCoordinates(coords);
         if (isNaN(lat) || isNaN(lon)) return;
 
-        // Accessibility text
         let accessibility = place.akadaly === "I" ? "Accessible" : "Not accessible";
 
-        // Popup content
         let popup = `
 <b>${place.taz_nev_en}</b><br>
 Registered voters: ${place.letszam}<br>
@@ -84,9 +83,8 @@ Accessibility: ${accessibility}<br>
 Voting hours: ${place.idotartam}
 `;
 
-        // Draw circle on map
         let marker = L.circleMarker([lat, lon], {
-            radius: Math.sqrt(place.letszam), // initial radius, will scale with zoom
+            radius: Math.sqrt(place.letszam), // base radius, will scale
             color: "#2A81CB",
             fillColor: "#2A81CB",
             fillOpacity: 0.45,
@@ -96,65 +94,22 @@ Voting hours: ${place.idotartam}
         markers.push({marker: marker, voters: place.letszam});
     });
 
-    // Adjust radius based on zoom level
+    // Dynamic scaling with zoom
     function updateMarkerSize() {
         let zoom = map.getZoom();
         markers.forEach(m => {
-            let newRadius = Math.sqrt(m.voters) * (zoom / 5); 
+            let scale = Math.pow(zoom / 5, 1.2); // tweak for aesthetics
+            let minRadius = 2; // prevent tiny circles disappearing
+            let newRadius = Math.max(Math.sqrt(m.voters) * scale, minRadius);
             m.marker.setRadius(newRadius);
         });
     }
 
     map.on('zoomend', updateMarkerSize);
-    updateMarkerSize(); // initial sizing
+    updateMarkerSize();
 
-})
-.catch(error => console.error("Failed to load data:", error));
-
-</script>
-
-</body>
-</html>    data.list.forEach(place => {
-
-        // Use reliable coordinates
-        let coords = place.kuvi_gps || place.gps;
-
-        // Clean the string: remove N/S/E/W and spaces
-        let cleaned = coords.replace(/[NSEW]/g,"").replace(/\s/g,"");
-
-        // Split into latitude and longitude
-        let parts = cleaned.split(",");
-
-        let lat = parseFloat(parts[0]);
-        let lon = parseFloat(parts[1]);
-
-        // Skip invalid coordinates
-        if (isNaN(lat) || isNaN(lon)) return;
-
-        // Compute circle radius (scaled)
-        let radius = Math.sqrt(place.letszam) * 1.2;
-
-        // Accessibility text
-        let accessibility = place.akadaly === "I" ? "Accessible" : "Not accessible";
-
-        // Popup content
-        let popup = `
-<b>${place.taz_nev_en}</b><br>
-Registered voters: ${place.letszam}<br>
-Accessibility: ${accessibility}<br>
-Voting hours: ${place.idotartam}
-`;
-
-        // Draw circle on map
-        L.circleMarker([lat, lon], {
-            radius: radius,
-            color: "#2A81CB",
-            fillColor: "#2A81CB",
-            fillOpacity: 0.45,
-            weight: 1
-        }).addTo(map).bindPopup(popup);
-
-    });
+    // --- Check number of cities displayed ---
+    console.log("Number of city markers:", markers.length);
 
 })
 .catch(error => console.error("Failed to load data:", error));
