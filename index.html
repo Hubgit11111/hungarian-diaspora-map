@@ -40,11 +40,12 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap'
 }).addTo(map);
 
-// Convert DMS string (including fancy primes) to decimal
+// Convert DMS string (including fancy primes and decimal seconds) to decimal
 function dmsToDecimal(dms) {
     if (!dms) return NaN;
-    // Replace fancy primes and quotes with ASCII
-    dms = dms.replace(/[′’]/g, "'").replace(/[″“”]/g, '"').trim();
+    // Normalize primes and quotes
+    dms = dms.replace(/[′’]/g, "'").replace(/[″“”]/g, '"');
+    dms = dms.replace(/\u00A0/g,' ').trim(); // remove non-breaking spaces
     let parts = dms.match(/(\d+)[°|º](\d+)'([\d.]+)"?([NSEW])/i);
     if (!parts) return NaN;
     let deg = parseFloat(parts[1]);
@@ -59,27 +60,25 @@ function dmsToDecimal(dms) {
 // Robust GPS parser for all known formats
 function parseCoordinates(coordStr) {
     if (!coordStr) return [NaN, NaN];
+    coordStr = coordStr.replace(/\u00A0/g,' ').trim();
 
-    coordStr = coordStr.replace(/\u00A0/g, ' ').trim(); // remove non-breaking spaces
-
-    // Check for DMS (with primes)
-    if (coordStr.match(/\d+[°|º]\d+'[\d.]+["″]/)) {
-        let matches = coordStr.match(/(\d+)[°|º](\d+)'([\d.]+)["″]?[NSEW]/gi);
-        if (!matches || matches.length < 2) return [NaN, NaN];
-        let lat = dmsToDecimal(matches[0]);
-        let lon = dmsToDecimal(matches[1]);
+    // DMS with degrees, minutes, decimal seconds, N/S/E/W
+    let dmsMatches = coordStr.match(/(\d+)[°|º](\d+)'([\d.]+)["″]?([NSEW])/gi);
+    if (dmsMatches && dmsMatches.length >= 2) {
+        let lat = dmsToDecimal(dmsMatches[0]);
+        let lon = dmsToDecimal(dmsMatches[1]);
         return [lat, lon];
     }
 
-    // Check for decimal with degree symbol and space (Bern)
-    let decimalDegMatch = coordStr.match(/(-?\d+\.?\d*)[°]?\s*([NS])?,?\s*(-?\d+\.?\d*)[°]?\s*([EW])?/i);
-    if (decimalDegMatch) {
-        let lat = parseFloat(decimalDegMatch[1]);
-        let lon = parseFloat(decimalDegMatch[3]);
-        let latDir = (decimalDegMatch[2] || '').toUpperCase();
-        let lonDir = (decimalDegMatch[4] || '').toUpperCase();
-        if (latDir === 'S') lat *= -1;
-        if (lonDir === 'W') lon *= -1;
+    // Decimal with optional degree symbol + N/S/E/W (Bern)
+    let decimalMatch = coordStr.match(/(-?\d+\.?\d*)[°]?\s*([NS])?,?\s*(-?\d+\.?\d*)[°]?\s*([EW])?/i);
+    if (decimalMatch) {
+        let lat = parseFloat(decimalMatch[1]);
+        let lon = parseFloat(decimalMatch[3]);
+        let latDir = (decimalMatch[2] || '').toUpperCase();
+        let lonDir = (decimalMatch[4] || '').toUpperCase();
+        if (latDir==='S') lat*=-1;
+        if (lonDir==='W') lon*=-1;
         return [lat, lon];
     }
 
@@ -89,14 +88,15 @@ function parseCoordinates(coordStr) {
     if (parts.length < 2) return [NaN, NaN];
     let lat = parseFloat(parts[0]);
     let lon = parseFloat(parts[1]);
-    if (coordStr.toUpperCase().includes("S")) lat *= -1;
-    if (coordStr.toUpperCase().includes("W")) lon *= -1;
+    if (coordStr.toUpperCase().includes("S")) lat*=-1;
+    if (coordStr.toUpperCase().includes("W")) lon*=-1;
     return [lat, lon];
 }
 
 // Store markers
 let markers = [];
 
+// Fetch JSON data (update path if needed)
 fetch("data.json")
 .then(response => response.json())
 .then(data => {
@@ -130,7 +130,7 @@ Voting hours: ${place.idotartam}
         markers.push({marker: marker, voters: place.letszam});
     });
 
-    // Scale bubbles with zoom
+    // Scale bubbles dynamically with zoom
     function updateMarkerSize() {
         let zoom = map.getZoom();
         markers.forEach(m => {
@@ -144,7 +144,7 @@ Voting hours: ${place.idotartam}
     map.on('zoomend', updateMarkerSize);
     updateMarkerSize();
 
-    // Marker count display
+    // Show marker count
     document.getElementById('markerCount').innerText = "City markers displayed: " + markers.length;
 
 })
