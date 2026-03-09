@@ -29,12 +29,92 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap'
 }).addTo(map);
 
-// Load local JSON data
+// Convert DMS to decimal degrees
+function dmsToDecimal(dms) {
+    if (!dms) return NaN;
+    let parts = dms.match(/(\d+)[°|º](\d+)'([\d.]+)"?([NSEW])/i);
+    if (!parts) return parseFloat(dms.replace(/[NSEW]/g,"").replace(/\s/g,""));
+    let deg = parseFloat(parts[1]);
+    let min = parseFloat(parts[2]);
+    let sec = parseFloat(parts[3]);
+    let dir = parts[4].toUpperCase();
+    let dec = deg + min/60 + sec/3600;
+    if (dir === "S" || dir === "W") dec *= -1;
+    return dec;
+}
+
+// Store markers for dynamic resizing
+let markers = [];
+
 fetch("data.json")
 .then(response => response.json())
 .then(data => {
 
     data.list.forEach(place => {
+
+        let lat, lon;
+
+        // Use reliable coordinates
+        let coords = place.kuvi_gps || place.gps;
+
+        if (coords.includes("°")) {
+            // DMS format
+            let [latStr, lonStr] = coords.split(/,| /).filter(s=>s.trim()!=="");
+            lat = dmsToDecimal(latStr);
+            lon = dmsToDecimal(lonStr);
+        } else {
+            // Decimal format
+            let cleaned = coords.replace(/[NSEW]/g,"").replace(/\s/g,"");
+            let parts = cleaned.split(",");
+            lat = parseFloat(parts[0]);
+            lon = parseFloat(parts[1]);
+        }
+
+        // Skip invalid coordinates
+        if (isNaN(lat) || isNaN(lon)) return;
+
+        // Accessibility text
+        let accessibility = place.akadaly === "I" ? "Accessible" : "Not accessible";
+
+        // Popup content
+        let popup = `
+<b>${place.taz_nev_en}</b><br>
+Registered voters: ${place.letszam}<br>
+Accessibility: ${accessibility}<br>
+Voting hours: ${place.idotartam}
+`;
+
+        // Draw circle on map
+        let marker = L.circleMarker([lat, lon], {
+            radius: Math.sqrt(place.letszam), // initial radius, will scale with zoom
+            color: "#2A81CB",
+            fillColor: "#2A81CB",
+            fillOpacity: 0.45,
+            weight: 1
+        }).addTo(map).bindPopup(popup);
+
+        markers.push({marker: marker, voters: place.letszam});
+    });
+
+    // Adjust radius based on zoom level
+    function updateMarkerSize() {
+        let zoom = map.getZoom();
+        markers.forEach(m => {
+            let newRadius = Math.sqrt(m.voters) * (zoom / 5); 
+            m.marker.setRadius(newRadius);
+        });
+    }
+
+    map.on('zoomend', updateMarkerSize);
+    updateMarkerSize(); // initial sizing
+
+})
+.catch(error => console.error("Failed to load data:", error));
+
+</script>
+
+</body>
+</html>    data.list.forEach(place => {
 
         // Use reliable coordinates
         let coords = place.kuvi_gps || place.gps;
