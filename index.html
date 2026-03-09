@@ -27,13 +27,17 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap'
 }).addTo(map);
 
-fetch("data.json")    
+fetch("data.json")
 .then(response => response.json())
 .then(data => {
 
 data.list.forEach(place => {
 
-let gps = place.gps.replace("N","").replace("E","").split(",");
+let cleaned = place.gps
+.replace(/[NSEW]/g,"")
+.replace(/\s/g,"");
+
+let gps = cleaned.split(",");
 
 let lat = parseFloat(gps[0]);
 let lon = parseFloat(gps[1]);
