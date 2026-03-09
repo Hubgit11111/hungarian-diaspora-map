@@ -48,7 +48,7 @@ if (isNaN(lat) || isNaN(lon)) return;
 
 let voters = place.letszam;
 
-let radius = Math.sqrt(voters) * 2;
+let radius = Math.sqrt(voters) * 1.2;
 
 let accessibility = place.akadaly === "I" ? "Accessible" : "Not accessible";
 
@@ -60,10 +60,12 @@ Voting hours: ${place.idotartam}
 `;
 
 L.circleMarker([lat,lon],{
-let radius = Math.sqrt(voters) * 1.2;
+radius: radius,
 color:"#2A81CB",
 fillColor:"#2A81CB",
-fillOpacity:0.6
+fillOpacity:0.45,
+weight:1
+})
 })
 .addTo(map)
 .bindPopup(popup);
