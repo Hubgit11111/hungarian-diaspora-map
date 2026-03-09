@@ -10,13 +10,24 @@
 <style>
 body { margin:0; font-family:Arial; }
 #map { height:100vh; }
+#markerCount {
+    position:absolute;
+    top:10px;
+    right:10px;
+    padding:8px;
+    background:white;
+    z-index:999;
+    font-family:Arial;
+    border-radius:4px;
+    box-shadow:0 0 5px rgba(0,0,0,0.3);
+}
 </style>
-
 </head>
 
 <body>
 
 <div id="map"></div>
+<div id="markerCount">Loading markers...</div>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -29,7 +40,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap'
 }).addTo(map);
 
-// Convert single DMS string to decimal
+// Convert a single DMS string to decimal
 function dmsToDecimal(dms) {
     let parts = dms.match(/(\d+)[°|º](\d+)'([\d.]+)"?([NSEW])/i);
     if (!parts) return NaN;
@@ -42,7 +53,7 @@ function dmsToDecimal(dms) {
     return dec;
 }
 
-// Robust coordinate parser
+// Robust coordinate parser for both DMS and decimal formats
 function parseCoordinates(coordStr) {
     if (!coordStr) return [NaN, NaN];
 
@@ -70,9 +81,14 @@ fetch("data.json")
 .then(data => {
 
     data.list.forEach(place => {
+
         let coords = place.kuvi_gps || place.gps;
         let [lat, lon] = parseCoordinates(coords);
-        if (isNaN(lat) || isNaN(lon)) return;
+
+        if (isNaN(lat) || isNaN(lon)) {
+            console.warn("Skipped city:", place.taz_nev_en, "coords:", coords);
+            return;
+        }
 
         let accessibility = place.akadaly === "I" ? "Accessible" : "Not accessible";
 
@@ -108,12 +124,14 @@ Voting hours: ${place.idotartam}
     map.on('zoomend', updateMarkerSize);
     updateMarkerSize();
 
-    // --- Check number of cities displayed ---
-    console.log("Number of city markers:", markers.length);
+    // Display number of markers on the page
+    document.getElementById('markerCount').innerText = "City markers displayed: " + markers.length;
 
 })
-.catch(error => console.error("Failed to load data:", error));
-
+.catch(error => {
+    console.error("Failed to load data:", error);
+    document.getElementById('markerCount').innerText = "Failed to load markers";
+});
 </script>
 
 </body>
