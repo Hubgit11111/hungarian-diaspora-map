@@ -11,118 +11,131 @@
 
 <style>
 
-body{margin:0;font-family:Arial,Helvetica,sans-serif;}
-#map{height:100vh;width:100%;}
+body { margin:0; font-family:Arial, Helvetica, sans-serif; }
+#map { height:100vh; width:100%; }
 
-/* PANELS */
+/* HEADER PANEL */
 
-.panel{
-position:absolute;
-left:10px;
-background:white;
-padding:12px 14px;
-border-radius:8px;
-box-shadow:0 2px 10px rgba(0,0,0,0.2);
-z-index:1000;
-width:max-content;
-max-width:280px;
-line-height:1.5;
+.headerBox{
+    position:absolute;
+    top:10px;
+    left:10px;
+    background:white;
+    padding:14px 18px;
+    border-radius:8px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.2);
+    z-index:1000;
+    max-width:340px;
 }
 
-#headerPanel{top:70px;}
+.headerTitle{
+    font-weight:bold;
+    font-size:18px;
+    margin-bottom:6px;
+}
 
-#citiesPanel{top:160px;}
+.headerSubtitle{
+    font-size:14px;
+    margin-bottom:8px;
+}
 
-.panelTitle{
-font-weight:bold;
-font-size:17px;
-margin-bottom:4px;
+.countdown{
+    font-size:14px;
+    font-weight:bold;
+}
+
+/* TOP CITIES PANEL */
+
+.topCities{
+    position:absolute;
+    top:140px;
+    left:10px;
+    background:white;
+    padding:12px 16px;
+    border-radius:8px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.2);
+    font-size:14px;
+    z-index:1000;
+    max-width:340px;
+}
+
+.topCitiesTitle{
+    font-weight:bold;
+    margin-bottom:6px;
 }
 
 /* COUNTER */
 
 .counterBox{
-position:absolute;
-top:10px;
-right:10px;
-background:white;
-padding:8px 12px;
-border-radius:6px;
-box-shadow:0 0 6px rgba(0,0,0,0.25);
-font-size:14px;
-z-index:1000;
+    position:absolute;
+    top:10px;
+    right:10px;
+    background:white;
+    padding:8px 12px;
+    border-radius:6px;
+    box-shadow:0 0 6px rgba(0,0,0,0.25);
+    font-size:14px;
+    z-index:1000;
 }
 
 /* FOOTER */
 
 .footer{
-position:absolute;
-bottom:0;
-left:0;
-width:100%;
-background:white;
-font-size:12px;
-text-align:center;
-padding:6px;
-color:#555;
-box-shadow:0 -2px 6px rgba(0,0,0,0.1);
-z-index:1000;
+    position:absolute;
+    bottom:0;
+    left:0;
+    width:100%;
+    background:white;
+    font-size:12px;
+    text-align:center;
+    padding:6px;
+    color:#555;
+    box-shadow:0 -2px 6px rgba(0,0,0,0.1);
+    z-index:1000;
 }
 
 /* POPUPS */
 
-.leaflet-popup-content-wrapper{max-width:600px;white-space:normal;}
+.leaflet-popup-content-wrapper{ max-width:600px; white-space:normal; }
 
 .leaflet-popup-content{
-font-size:22px;
-line-height:1.6;
+    font-size:22px;
+    line-height:1.6;
 }
 
 @media (max-width:600px){
 
-.leaflet-popup-content-wrapper{max-width:1200px;}
+    .leaflet-popup-content-wrapper{ max-width:1200px; }
 
-.leaflet-popup-content{
-font-size:35px;
-line-height:1.8;
-}
+    .leaflet-popup-content{
+        font-size:35px;
+        line-height:1.8;
+    }
 
 }
 
 /* BUTTON */
 
 .registerButton{
-display:inline-block;
-margin-top:10px;
-padding:8px 12px;
-background:#e60023;
-color:white !important;
-font-weight:bold;
-border-radius:6px;
-text-decoration:none;
+    display:inline-block;
+    margin-top:10px;
+    padding:8px 12px;
+    background:#e60023;
+    color:white;
+    font-weight:bold;
+    border-radius:6px;
+    text-decoration:none;
 }
 
 .registerButton:hover{
-background:#c4001d;
-color:white !important;
+    background:#c4001d;
 }
 
 .link{
-color:#0046cc;
-text-decoration:none;
-font-weight:bold;
+    color:#0046cc;
+    text-decoration:none;
+    font-weight:bold;
 }
-
-/* CITY LINKS */
-
-.cityLink{
-cursor:pointer;
-color:#0046cc;
-font-weight:bold;
-text-decoration:none;
-}
-
-.cityLink:hover{text-decoration:underline;}
 
 </style>
 
@@ -132,24 +145,28 @@ text-decoration:none;
 
 <div id="map"></div>
 
-<div id="headerPanel" class="panel">
+<div class="headerBox">
 
-<div class="panelTitle">
+<div class="headerTitle">
 Magyarországi Országgyűlési Választás 2026
+</div>
+
+<div class="headerSubtitle">
+Külképviseleti szavazás világtérképe
 </div>
 
 <div>
 Szavazás napja: 2026. április 12.
 </div>
 
-<div id="countdown"></div>
+<div id="countdown" class="countdown"></div>
 
 </div>
 
-<div id="citiesPanel" class="panel">
+<div class="topCities">
 
-<div class="panelTitle">
-Szavazóhelyek regisztráció alapján
+<div class="topCitiesTitle">
+Legnagyobb külképviseleti szavazóhelyek
 </div>
 
 <div id="topCitiesList"></div>
@@ -169,225 +186,206 @@ Adatforrás: Nemzeti Választási Iroda (valasztas.hu) • A térkép automatiku
 
 <script>
 
-const map=L.map('map').setView([20,10],2);
+const map = L.map('map').setView([20,10],2);
+
+/* CLEANER BASEMAP */
 
 L.tileLayer(
 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-{attribution:'© OpenStreetMap contributors'}
+{ attribution:'© OpenStreetMap contributors' }
 ).addTo(map);
 
-let clusterGroup=L.markerClusterGroup();
+let clusterGroup = L.markerClusterGroup();
 map.addLayer(clusterGroup);
 
 let markers=[];
-let cityLookup={};
 
 /* COUNTDOWN */
 
-const electionDate=new Date("2026-04-12");
+const electionDate = new Date("2026-04-12");
 
 function updateCountdown(){
 
-const today=new Date();
-const diff=electionDate-today;
-const days=Math.ceil(diff/(1000*60*60*24));
+    const today = new Date();
+    const diff = electionDate - today;
+    const days = Math.ceil(diff/(1000*60*60*24));
 
-document.getElementById("countdown").innerHTML=
-"Szavazás napjáig hátralévő idő: "+days+" nap";
-
+    document.getElementById("countdown").innerHTML =
+    "Szavazás napjáig hátralévő idő:<br>"+days+" nap";
 }
 
 updateCountdown();
 
-/* UTILITIES */
+/* UTILITY FUNCTIONS */
 
 function parseCoordinates(coordString){
 
-if(!coordString) return null;
+    if(!coordString) return null;
 
-coordString=coordString.trim();
+    coordString = coordString.trim();
 
-let m=coordString.match(/([0-9.]+)\s*([NS])\s*,?\s*([0-9.]+)\s*([EW])/i);
+    let m = coordString.match(/([0-9.]+)\s*([NS])\s*,?\s*([0-9.]+)\s*([EW])/i);
 
-if(m){
+    if(m){
 
-let lat=parseFloat(m[1]);
-let lon=parseFloat(m[3]);
+        let lat=parseFloat(m[1]);
+        let lon=parseFloat(m[3]);
 
-if(m[2]==="S") lat=-lat;
-if(m[4]==="W") lon=-lon;
+        if(m[2]==="S") lat=-lat;
+        if(m[4]==="W") lon=-lon;
 
-return[lat,lon];
-}
+        return [lat,lon];
+    }
 
-if(coordString.includes(",")){
+    if(coordString.includes(",")){
 
-let p=coordString.split(",");
-let lat=parseFloat(p[0]);
-let lon=parseFloat(p[1]);
+        let p=coordString.split(",");
+        let lat=parseFloat(p[0]);
+        let lon=parseFloat(p[1]);
 
-if(!isNaN(lat)&&!isNaN(lon))
-return[lat,lon];
-}
+        if(!isNaN(lat)&&!isNaN(lon))
+        return [lat,lon];
+    }
 
-let d=coordString.match(/(\d+)°(\d+)[′']([\d.]+)[″"]?([NS])\s*(\d+)°(\d+)[′']([\d.]+)[″"]?([EW])/);
+    let d=coordString.match(/(\d+)°(\d+)[′']([\d.]+)[″"]?([NS])\s*(\d+)°(\d+)[′']([\d.]+)[″"]?([EW])/);
 
-if(d){
+    if(d){
 
-let lat=parseFloat(d[1])+parseFloat(d[2])/60+parseFloat(d[3])/3600;
-let lon=parseFloat(d[5])+parseFloat(d[6])/60+parseFloat(d[7])/3600;
+        let lat=parseFloat(d[1])+parseFloat(d[2])/60+parseFloat(d[3])/3600;
+        let lon=parseFloat(d[5])+parseFloat(d[6])/60+parseFloat(d[7])/3600;
 
-if(d[4]==="S") lat=-lat;
-if(d[8]==="W") lon=-lon;
+        if(d[4]==="S") lat=-lat;
+        if(d[8]==="W") lon=-lon;
 
-return[lat,lon];
-}
+        return [lat,lon];
+    }
 
-return null;
-
+    return null;
 }
 
 function formatNumber(num){
-return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
 }
 
 function formatTime(time){
-let parts=time.split("-");
-return parts[0].padStart(2,"0")+":00 - "+parts[1].padStart(2,"0")+":00";
+
+    let parts=time.split("-");
+
+    return parts[0].padStart(2,"0")+":00 - "+parts[1].padStart(2,"0")+":00";
 }
 
 function createPopup(place){
 
-let akadaly=place.akadaly==="I"?"Igen":"Nem";
+    let akadaly = place.akadaly==="I"?"Igen":"Nem";
 
-return`
-<b>${place.taz_nev}</b><br><br>
+    return `
+    <b>${place.taz_nev}</b><br><br>
 
-<a class="link" target="_blank"
-href="https://vtr.valasztas.hu/ogy2026/valasztopolgaroknak/kulkepviseletek-listaja?tab=kulkepviseletek-listaja">
-Külképviselet kereső
-</a><br><br>
+    <a class="link" target="_blank"
+    href="https://vtr.valasztas.hu/ogy2026/valasztopolgaroknak/kulkepviseletek-listaja?tab=kulkepviseletek-listaja">
+    Külképviselet kereső
+    </a><br><br>
 
-Névjegyzékbe vett választópolgárok száma: ${formatNumber(place.letszam)}<br>
-Akadálymentes: ${akadaly}<br>
-Szavazás ideje: ${formatTime(place.idotartam)}<br><br>
+    Névjegyzékbe vett választópolgárok száma: ${formatNumber(place.letszam)}<br>
+    Akadálymentes: ${akadaly}<br>
+    Szavazás ideje: ${formatTime(place.idotartam)}<br><br>
 
-<a class="registerButton" target="_blank"
-href="https://www.valasztas.hu/ugyintezes">
-REGISZTRÁLJ MOST
-</a>
-`;
-
+    <a class="registerButton" target="_blank"
+    href="https://www.valasztas.hu/ugyintezes">
+    REGISZTRÁLJ MOST
+    </a>
+    `;
 }
 
 /* BUBBLE SIZE */
 
 function getRadius(voters,zoom){
 
-const minRadius=12;
-const maxRadius=50;
+    const minRadius=12;
+    const maxRadius=50;
 
-let scale=Math.sqrt(voters)*0.5*(zoom/3);
+    let scale=Math.sqrt(voters)*0.5*(zoom/3);
 
-if(scale<minRadius) scale=minRadius;
-if(scale>maxRadius) scale=maxRadius;
+    if(scale<minRadius) scale=minRadius;
+    if(scale>maxRadius) scale=maxRadius;
 
-return scale;
-
+    return scale;
 }
 
 /* LOAD DATA */
 
 fetch("data.json").then(r=>r.json()).then(data=>{
 
-clusterGroup.clearLayers();
-markers=[];
+    clusterGroup.clearLayers();
+    markers=[];
 
-let ranking=[];
-let count=0;
+    let count=0;
+    let ranking=[];
 
-data.list.forEach(place=>{
+    data.list.forEach(place=>{
 
-let coords=parseCoordinates(place.kuvi_gps||place.gps);
-if(!coords) return;
+        let coords=parseCoordinates(place.kuvi_gps||place.gps);
+        if(!coords) return;
 
-let circle=L.circleMarker(coords,{
+        let circle=L.circleMarker(coords,{
 
-radius:getRadius(place.letszam,map.getZoom()),
-color:"#0066ff",
-fillColor:"#0066ff",
-fillOpacity:0.6,
-weight:1
+            radius:getRadius(place.letszam,map.getZoom()),
+            color:"#0066ff",
+            fillColor:"#0066ff",
+            fillOpacity:0.6,
+            weight:1
 
-});
+        });
 
-circle.bindPopup(createPopup(place));
+        circle.bindPopup(createPopup(place));
 
-circle.on("mouseover",function(){
-this.setStyle({weight:2,fillOpacity:0.8});
-});
+        circle.on("mouseover",function(){
+            this.setStyle({weight:2,fillOpacity:0.8});
+        });
 
-circle.on("mouseout",function(){
-this.setStyle({weight:1,fillOpacity:0.6});
-});
+        circle.on("mouseout",function(){
+            this.setStyle({weight:1,fillOpacity:0.6});
+        });
 
-clusterGroup.addLayer(circle);
+        clusterGroup.addLayer(circle);
 
-markers.push({marker:circle,voters:place.letszam});
+        markers.push({
+            marker:circle,
+            voters:place.letszam
+        });
 
-cityLookup[place.taz_nev]=coords;
+        ranking.push(place);
 
-ranking.push(place);
+        count++;
+    });
 
-count++;
+    document.getElementById("counter").innerText=count;
 
-});
+    /* TOP CITIES */
 
-document.getElementById("counter").innerText=count;
+    ranking.sort((a,b)=>b.letszam-a.letszam);
 
-/* TOP CITY LIST */
+    let top=ranking.slice(0,5);
 
-ranking.sort((a,b)=>b.letszam-a.letszam);
+    let html="";
 
-let top=ranking.slice(0,5);
+    top.forEach((p,i)=>{
+        html+=(i+1)+". "+p.taz_nev+" — "+formatNumber(p.letszam)+"<br>";
+    });
 
-let html="";
-
-top.forEach((p,i)=>{
-
-html+=
-(i+1)+'. <span class="cityLink" onclick="zoomToCity(\\''+p.taz_nev+'\\')">'+
-p.taz_nev+
-"</span> — "+
-formatNumber(p.letszam)+
-"<br>";
+    document.getElementById("topCitiesList").innerHTML=html;
 
 });
-
-document.getElementById("topCitiesList").innerHTML=html;
-
-});
-
-/* CITY ZOOM */
-
-function zoomToCity(city){
-
-let coords=cityLookup[city];
-if(!coords) return;
-
-map.setView(coords,7);
-
-}
 
 /* UPDATE BUBBLE SIZE */
 
 map.on("zoomend",()=>{
 
-let zoom=map.getZoom();
+    let zoom=map.getZoom();
 
-markers.forEach(m=>{
-m.marker.setRadius(getRadius(m.voters,zoom));
-});
+    markers.forEach(m=>{
+        m.marker.setRadius(getRadius(m.voters,zoom));
+    });
 
 });
 
