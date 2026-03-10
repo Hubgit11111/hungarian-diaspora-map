@@ -12,18 +12,20 @@
 <style>
 body { margin:0; font-family:Arial, Helvetica, sans-serif; }
 #map { height:100vh; width:100%; }
+
 .counterBox{
     position:absolute; top:10px; right:10px;
     background:white; padding:8px 12px;
     border-radius:6px; box-shadow:0 0 6px rgba(0,0,0,0.25);
     font-size:14px; z-index:1000;
 }
-.leaflet-popup-content{ font-size:32px; line-height:2; }
-.leaflet-popup-content-wrapper{ max-width:900px; }
+
+.leaflet-popup-content-wrapper{ max-width:600px; white-space:normal; }
+.leaflet-popup-content{ font-size:22px; line-height:1.6; }
 
 @media (max-width:600px){
-    .leaflet-popup-content-wrapper{ max-width:1500px; }
-    .leaflet-popup-content{ font-size:40px; line-height:2; }
+    .leaflet-popup-content-wrapper{ max-width:1200px; }
+    .leaflet-popup-content{ font-size:35px; line-height:1.8; }
 }
 
 .registerButton{ font-size:120%; font-weight:bold; color:#0046cc; text-decoration:none; }
@@ -44,7 +46,6 @@ Városok száma: <span id="counter">0</span>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 <script>
-
 const map = L.map('map').setView([20,10],2);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ maxZoom:19 }).addTo(map);
@@ -73,7 +74,10 @@ function parseCoordinates(coordString){
 
 function formatNumber(num){ return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g,","); }
 
-function formatTime(time){ let parts=time.split("-"); return parts[0].padStart(2,"0")+":00 - "+parts[1].padStart(2,"0")+":00"; }
+function formatTime(time){ 
+    let parts=time.split("-"); 
+    return parts[0].padStart(2,"0")+":00 - "+parts[1].padStart(2,"0")+":00"; 
+}
 
 function createPopup(place){
     let akadaly = place.akadaly==="I"?"Igen":"Nem";
@@ -93,7 +97,7 @@ function createPopup(place){
 
 // --- Bubble sizing function (min/max radius) ---
 function getRadius(voters, zoom){
-    const minRadius = 4;
+    const minRadius = 12; // Increased minimum for small cities
     const maxRadius = 50;
     let scale = Math.sqrt(voters)*0.5*(zoom/3);
     if(scale < minRadius) scale = minRadius;
