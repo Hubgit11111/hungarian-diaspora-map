@@ -18,9 +18,17 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download latest JSON
-        run: |
-          echo "Downloading latest data..."
-          curl -f -s -o new_data.json "https://vtr.valasztas.hu/ogy2026/data/03091300/ver/Kulkepviselet.json"
+  run: |
+    echo "Getting latest dataset version..."
+    curl -s https://vtr.valasztas.hu/ogy2026/data/config.json -o config.json
+
+    VERSION=$(jq -r '.ver' config.json)
+
+    echo "Latest version: $VERSION"
+
+    DATA_URL="https://vtr.valasztas.hu/ogy2026/data/$VERSION/ver/Kulkepviselet.json"
+
+    curl -f -s -o new_data.json "$DATA_URL"
 
       - name: Validate JSON
         run: |
