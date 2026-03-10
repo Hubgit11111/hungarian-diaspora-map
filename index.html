@@ -3,11 +3,9 @@
 <head>
 
 <meta charset="utf-8">
-<title>Hungarian Diaspora Voting Map</title>
+<title>Külképviseleti szavazás világtérkép</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
 
 <style>
 
@@ -50,12 +48,19 @@ line-height:1.5;
 }
 
 .leaflet-popup-content-wrapper{
-max-width:90vw;
+max-width:450px;
 }
 
 }
 
-.popupLink{
+.registerButton{
+font-size:120%;
+font-weight:bold;
+color:#0046cc;
+text-decoration:none;
+}
+
+.link{
 color:#0046cc;
 text-decoration:none;
 font-weight:bold;
@@ -70,11 +75,10 @@ font-weight:bold;
 <div id="map"></div>
 
 <div class="counterBox">
-City markers displayed: <span id="counter">0</span>
+Városok száma: <span id="counter">0</span>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 <script>
 
@@ -84,8 +88,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 maxZoom:19
 }).addTo(map);
 
-let clusterGroup = L.markerClusterGroup();
+let markers=[];
 
+
+/* GPS PARSER */
 
 function parseCoordinates(coordString){
 
@@ -139,25 +145,12 @@ return [lat,lon];
 
 }
 
-let g=coordString.match(/([\d.]+)°\s*([NS])?,?\s*([\d.]+)°\s*([EW])/);
-
-if(g){
-
-let lat=parseFloat(g[1]);
-let lon=parseFloat(g[3]);
-
-if(g[2]==="S") lat=-lat;
-if(g[4]==="W") lon=-lon;
-
-return [lat,lon];
-
-}
-
 return null;
 
 }
 
 
+/* BUBBLE SIZE */
 
 function getRadius(voters){
 
@@ -172,12 +165,44 @@ return base*scale;
 }
 
 
+/* FORMAT NUMBERS */
 
-fetch("data.json")
+function formatNumber(num){
 
-.then(r=>r.json())
+return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-.then(data=>{
+}
+
+
+/* FORMAT TIME */
+
+function formatTime(time){
+
+let parts=time.split("-");
+
+return parts[0].padStart(2,"0")+":00 - "+parts[1].padStart(2,"0")+":00";
+
+}
+
+
+/* LOAD DATA */
+
+Promise.all([
+fetch("data.json").then(r=>r.json()),
+fetch("previous_data.json").then(r=>r.json()).catch(()=>null)
+])
+
+.then(([data,previous])=>{
+
+let previousMap={};
+
+if(previous){
+
+previous.list.forEach(p=>{
+previousMap[p.taz_nev_en]=p.letszam;
+});
+
+}
 
 let count=0;
 
@@ -189,46 +214,78 @@ if(!coords) return;
 
 let voters=place.letszam;
 
-let accessibility = place.akadaly==="I" ? "Accessible" : "Not accessible";
+let prev=previousMap[place.taz_nev_en] || voters;
+
+let growth=voters>prev;
+
+let akadaly = place.akadaly==="I" ? "Igen" : "Nem";
 
 let popup = `
 <b>${place.taz_nev_en}</b><br><br>
 
-<a class="popupLink" target="_blank"
+<a class="link" target="_blank"
 href="https://vtr.valasztas.hu/ogy2026/valasztopolgaroknak/kulkepviseletek-listaja?tab=kulkepviseletek-listaja">
-Venue address
+Külképviselet kereső
 </a>
 <br><br>
 
-Registered voters: ${voters}<br>
-Accessibility: ${accessibility}<br>
-Voting time: ${place.idotartam}<br><br>
+Névjegyzékbe vett választópolgárok száma: ${formatNumber(voters)}<br>
+Akadálymentes: ${akadaly}<br>
+Szavazás ideje: ${formatTime(place.idotartam)}<br><br>
 
-<a class="popupLink" target="_blank"
+<a class="registerButton" target="_blank"
 href="https://www.valasztas.hu/en/ugyintezes">
-REGISTER TO VOTE NOW
+REGISZTRÁLJ MOST
 </a>
 `;
 
 let circle=L.circleMarker(coords,{
 radius:getRadius(voters),
-color:"#cc0000",
-fillColor:"#cc0000",
+color:"#0066ff",
+fillColor:"#0066ff",
 fillOpacity:0.6,
 weight:1
-});
+}).addTo(map);
 
 circle.bindPopup(popup);
 
-clusterGroup.addLayer(circle);
+if(growth){
+
+let pulse=0;
+
+let interval=setInterval(()=>{
+
+pulse++;
+
+circle.setStyle({
+fillOpacity: pulse%2 ? 1 : 0.6
+});
+
+if(pulse>6){
+clearInterval(interval);
+circle.setStyle({fillOpacity:0.6});
+}
+
+},400);
+
+}
+
+markers.push({marker:circle,voters:voters});
 
 count++;
 
 });
 
-map.addLayer(clusterGroup);
-
 document.getElementById("counter").innerText=count;
+
+});
+
+
+map.on("zoomend",function(){
+
+markers.forEach(m=>{
+m.marker.setRadius(getRadius(m.voters));
+});
 
 });
 
