@@ -6,6 +6,8 @@
 <title>Hungarian Diaspora Voting Map</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
 
 <style>
 
@@ -30,8 +32,6 @@ box-shadow:0 0 6px rgba(0,0,0,0.25);
 font-size:14px;
 z-index:1000;
 }
-
-/* popup readability */
 
 .leaflet-popup-content{
 font-size:15px;
@@ -74,6 +74,7 @@ City markers displayed: <span id="counter">0</span>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 <script>
 
@@ -83,16 +84,14 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 maxZoom:19
 }).addTo(map);
 
+let clusterGroup = L.markerClusterGroup();
 
-/* ---------- GPS PARSER ---------- */
 
 function parseCoordinates(coordString){
 
 if(!coordString) return null;
 
 coordString = coordString.trim();
-
-/* format: 24.488289N ,54.373057E */
 
 let m = coordString.match(/([0-9.]+)\s*([NS])\s*,?\s*([0-9.]+)\s*([EW])/i);
 
@@ -108,9 +107,6 @@ return [lat,lon];
 
 }
 
-
-/* decimal format */
-
 if(coordString.includes(",")){
 
 let p=coordString.split(",");
@@ -118,14 +114,9 @@ let p=coordString.split(",");
 let lat=parseFloat(p[0]);
 let lon=parseFloat(p[1]);
 
-if(!isNaN(lat) && !isNaN(lon)){
-return [lat,lon];
-}
+if(!isNaN(lat) && !isNaN(lon)) return [lat,lon];
 
 }
-
-
-/* DMS format (Montreal etc.) */
 
 let d=coordString.match(/(\d+)°(\d+)[′']([\d.]+)[″"]?([NS])\s*(\d+)°(\d+)[′']([\d.]+)[″"]?([EW])/);
 
@@ -148,9 +139,6 @@ return [lat,lon];
 
 }
 
-
-/* degree format (Bern etc.) */
-
 let g=coordString.match(/([\d.]+)°\s*([NS])?,?\s*([\d.]+)°\s*([EW])/);
 
 if(g){
@@ -170,7 +158,20 @@ return null;
 }
 
 
-/* ---------- LOAD DATA ---------- */
+
+function getRadius(voters){
+
+let zoom=map.getZoom();
+
+let base=Math.sqrt(voters)*4;
+
+let scale=zoom/3;
+
+return base*scale;
+
+}
+
+
 
 fetch("data.json")
 
@@ -188,12 +189,7 @@ if(!coords) return;
 
 let voters=place.letszam;
 
-/* ORIGINAL scaling logic */
-
-let radius = Math.sqrt(voters) * 4;
-
 let accessibility = place.akadaly==="I" ? "Accessible" : "Not accessible";
-
 
 let popup = `
 <b>${place.taz_nev_en}</b><br><br>
@@ -214,23 +210,23 @@ REGISTER TO VOTE NOW
 </a>
 `;
 
-
-/* ORIGINAL bubble styling */
-
 let circle=L.circleMarker(coords,{
-radius:radius,
+radius:getRadius(voters),
 color:"#cc0000",
 fillColor:"#cc0000",
 fillOpacity:0.6,
 weight:1
-}).addTo(map);
+});
 
 circle.bindPopup(popup);
+
+clusterGroup.addLayer(circle);
 
 count++;
 
 });
 
+map.addLayer(clusterGroup);
 
 document.getElementById("counter").innerText=count;
 
