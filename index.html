@@ -42,46 +42,73 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 
 // Robust DMS/Decimal parser
 function parseCoordinates(coordStr){
-    if(!coordStr) return [NaN, NaN];
-    coordStr = coordStr.replace(/[′’]/g,"'").replace(/[″“”]/g,'"').replace(/\u00A0/g,' ').trim();
+function parseCoordinates(coordString) {
 
-    const dmsMatches = coordStr.match(/(\d+)[°º](\d+)'([\d.]+)["″]?([NSEW])/gi);
-    if(dmsMatches && dmsMatches.length >= 2){
-        const dmsToDec = dms => {
-            let m = dms.match(/(\d+)[°º](\d+)'([\d.]+)"?([NSEW])/i);
-            if(!m) return NaN;
-            let deg = parseFloat(m[1]);
-            let min = parseFloat(m[2]);
-            let sec = parseFloat(m[3]);
-            let dir = m[4].toUpperCase();
-            let dec = deg + min/60 + sec/3600;
-            if(dir==='S'||dir==='W') dec*=-1;
-            return dec;
-        };
-        let lat = dmsToDec(dmsMatches[0]);
-        let lon = dmsToDec(dmsMatches[1]);
+    if (!coordString) return null;
+
+    coordString = coordString.trim();
+
+    // CASE 1: decimal with N/E/S/W (Abu Dhabi format)
+    let match = coordString.match(/([0-9.]+)\s*([NS])\s*,?\s*([0-9.]+)\s*([EW])/i);
+    if (match) {
+
+        let lat = parseFloat(match[1]);
+        let lon = parseFloat(match[3]);
+
+        if (match[2].toUpperCase() === "S") lat = -lat;
+        if (match[4].toUpperCase() === "W") lon = -lon;
+
         return [lat, lon];
     }
 
-    let decimalMatch = coordStr.match(/(-?\d+\.?\d*)[°]?\s*([NS])?,?\s*(-?\d+\.?\d*)[°]?\s*([EW])?/i);
-    if(decimalMatch){
-        let lat = parseFloat(decimalMatch[1]);
-        let lon = parseFloat(decimalMatch[3]);
-        let latDir = (decimalMatch[2]||'').toUpperCase();
-        let lonDir = (decimalMatch[4]||'').toUpperCase();
-        if(latDir==='S') lat*=-1;
-        if(lonDir==='W') lon*=-1;
+    // CASE 2: simple decimal
+    if (coordString.includes(",")) {
+
+        let parts = coordString.split(",");
+        let lat = parseFloat(parts[0]);
+        let lon = parseFloat(parts[1]);
+
+        if (!isNaN(lat) && !isNaN(lon)) {
+            return [lat, lon];
+        }
+    }
+
+    // CASE 3: DMS format (Montreal style)
+    let dmsMatch = coordString.match(/(\d+)°(\d+)[′']([\d.]+)[″"]?([NS])\s*(\d+)°(\d+)[′']([\d.]+)[″"]?([EW])/);
+
+    if (dmsMatch) {
+
+        let lat =
+            parseFloat(dmsMatch[1]) +
+            parseFloat(dmsMatch[2]) / 60 +
+            parseFloat(dmsMatch[3]) / 3600;
+
+        let lon =
+            parseFloat(dmsMatch[5]) +
+            parseFloat(dmsMatch[6]) / 60 +
+            parseFloat(dmsMatch[7]) / 3600;
+
+        if (dmsMatch[4] === "S") lat = -lat;
+        if (dmsMatch[8] === "W") lon = -lon;
+
         return [lat, lon];
     }
 
-    let cleaned = coordStr.replace(/[NSEW]/gi,"").replace(/\s+/g,",");
-    let parts = cleaned.split(",");
-    if(parts.length < 2) return [NaN, NaN];
-    let lat = parseFloat(parts[0]);
-    let lon = parseFloat(parts[1]);
-    if(coordStr.toUpperCase().includes("S")) lat*=-1;
-    if(coordStr.toUpperCase().includes("W")) lon*=-1;
-    return [lat, lon];
+    // CASE 4: degrees with symbols (Bern style)
+    let degMatch = coordString.match(/([\d.]+)°\s*([NS])?,?\s*([\d.]+)°\s*([EW])/);
+
+    if (degMatch) {
+
+        let lat = parseFloat(degMatch[1]);
+        let lon = parseFloat(degMatch[3]);
+
+        if (degMatch[2] === "S") lat = -lat;
+        if (degMatch[4] === "W") lon = -lon;
+
+        return [lat, lon];
+    }
+
+    return null;
 }
 
 // Store markers
