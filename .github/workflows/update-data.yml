@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Download latest JSON
+      - name: Download latest dataset
         run: |
           echo "Getting latest dataset version..."
 
@@ -29,7 +29,7 @@ jobs:
 
           DATA_URL="https://vtr.valasztas.hu/ogy2026/data/$VERSION/ver/Kulkepviselet.json"
 
-          echo "Downloading data from $DATA_URL"
+          echo "Downloading dataset from $DATA_URL"
 
           curl -f -s -o new_data.json "$DATA_URL"
 
@@ -37,6 +37,12 @@ jobs:
         run: |
           echo "Validating JSON..."
           jq empty new_data.json
+
+      - name: Backup previous dataset
+        run: |
+          if [ -f data.json ]; then
+            cp data.json previous_data.json
+          fi
 
       - name: Compare with existing data
         id: compare
@@ -49,16 +55,16 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Replace old data
+      - name: Replace old dataset
         if: steps.compare.outputs.changed == 'true'
         run: mv new_data.json data.json
 
-      - name: Commit and push update
+      - name: Commit update
         if: steps.compare.outputs.changed == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.json
+          git add data.json previous_data.json
           git commit -m "Automatic update of voter data"
           git pull --rebase
           git push
