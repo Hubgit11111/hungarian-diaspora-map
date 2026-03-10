@@ -6,287 +6,130 @@
 <title>Külképviseleti szavazás világtérkép</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
 
 <style>
-
-body{
-margin:0;
-font-family:Arial, Helvetica, sans-serif;
-}
-
-#map{
-height:100vh;
-width:100%;
-}
-
-.counterBox{
-position:absolute;
-top:10px;
-right:10px;
-background:white;
-padding:8px 12px;
-border-radius:6px;
-box-shadow:0 0 6px rgba(0,0,0,0.25);
-font-size:14px;
-z-index:1000;
-}
-
-.leaflet-popup-content{
-font-size:15px;
-line-height:1.4;
-}
-
-.leaflet-popup-content-wrapper{
-max-width:300px;
-}
-
+body { margin:0; font-family:Arial, Helvetica, sans-serif; }
+#map { height:100vh; width:100%; }
+.counterBox{position:absolute; top:10px; right:10px; background:white; padding:8px 12px; border-radius:6px; box-shadow:0 0 6px rgba(0,0,0,0.25); font-size:14px; z-index:1000;}
+.leaflet-popup-content{font-size:15px; line-height:1.4;}
+.leaflet-popup-content-wrapper{max-width:450px;}
 @media (max-width:600px){
-
-.leaflet-popup-content{
-font-size:18px;
-line-height:1.5;
+  .leaflet-popup-content-wrapper{max-width:675px;}
+  .leaflet-popup-content{font-size:18px; line-height:1.5;}
 }
-
-.leaflet-popup-content-wrapper{
-max-width:450px;
-}
-
-}
-
-.registerButton{
-font-size:120%;
-font-weight:bold;
-color:#0046cc;
-text-decoration:none;
-}
-
-.link{
-color:#0046cc;
-text-decoration:none;
-font-weight:bold;
-}
-
+.registerButton{font-size:120%; font-weight:bold; color:#0046cc; text-decoration:none;}
+.link{color:#0046cc; text-decoration:none; font-weight:bold;}
+#sliderBox {position:absolute; left:50%; bottom:10px; transform:translateX(-50%); background:white; padding:6px 10px; border-radius:6px; z-index:1000;}
 </style>
 
 </head>
 
 <body>
-
 <div id="map"></div>
 
 <div class="counterBox">
 Városok száma: <span id="counter">0</span>
 </div>
 
+<div id="sliderBox">
+<input type="range" min="0" max="0" value="0" id="daySlider">
+<span id="sliderDate">--</span>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 <script>
 
 const map = L.map('map').setView([20,10],2);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
-}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 
-let markers=[];
+let clusterGroup = L.markerClusterGroup();
+map.addLayer(clusterGroup);
 
+let slider = document.getElementById('daySlider');
+let sliderDate = document.getElementById('sliderDate');
 
-/* GPS PARSER */
+let historicalFiles = []; // Example: ["data-20260308.json","data-20260309.json","data.json"]
+let currentMarkers = [];
+
+// --- Utility functions ---
 
 function parseCoordinates(coordString){
-
-if(!coordString) return null;
-
-coordString = coordString.trim();
-
-let m = coordString.match(/([0-9.]+)\s*([NS])\s*,?\s*([0-9.]+)\s*([EW])/i);
-
-if(m){
-
-let lat=parseFloat(m[1]);
-let lon=parseFloat(m[3]);
-
-if(m[2].toUpperCase()==="S") lat=-lat;
-if(m[4].toUpperCase()==="W") lon=-lon;
-
-return [lat,lon];
-
+    if(!coordString) return null;
+    coordString = coordString.trim();
+    let m = coordString.match(/([0-9.]+)\s*([NS])\s*,?\s*([0-9.]+)\s*([EW])/i);
+    if(m){ let lat=parseFloat(m[1]), lon=parseFloat(m[3]); if(m[2]==="S") lat=-lat; if(m[4]==="W") lon=-lon; return [lat,lon]; }
+    if(coordString.includes(",")){ let p=coordString.split(","); let lat=parseFloat(p[0]), lon=parseFloat(p[1]); if(!isNaN(lat)&&!isNaN(lon)) return [lat,lon]; }
+    let d=coordString.match(/(\d+)°(\d+)[′']([\d.]+)[″"]?([NS])\s*(\d+)°(\d+)[′']([\d.]+)[″"]?([EW])/);
+    if(d){ let lat=parseFloat(d[1])+parseFloat(d[2])/60+parseFloat(d[3])/3600; let lon=parseFloat(d[5])+parseFloat(d[6])/60+parseFloat(d[7])/3600; if(d[4]==="S") lat=-lat; if(d[8]==="W") lon=-lon; return [lat,lon]; }
+    return null;
 }
 
-if(coordString.includes(",")){
+function formatNumber(num){return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");}
 
-let p=coordString.split(",");
+function formatTime(time){ let parts=time.split("-"); return parts[0].padStart(2,"0")+":00 - "+parts[1].padStart(2,"0")+":00"; }
 
-let lat=parseFloat(p[0]);
-let lon=parseFloat(p[1]);
-
-if(!isNaN(lat) && !isNaN(lon)) return [lat,lon];
-
+function createPopup(place){
+    let akadaly = place.akadaly==="I"?"Igen":"Nem";
+    return `
+    <b>${place.taz_nev_en}</b><br><br>
+    <a class="link" target="_blank" href="https://vtr.valasztas.hu/ogy2026/valasztopolgaroknak/kulkepviseletek-listaja?tab=kulkepviseletek-listaja">
+    Külképviselet kereső
+    </a><br><br>
+    Névjegyzékbe vett választópolgárok száma: ${formatNumber(place.letszam)}<br>
+    Akadálymentes: ${akadaly}<br>
+    Szavazás ideje: ${formatTime(place.idotartam)}<br><br>
+    <a class="registerButton" target="_blank" href="https://www.valasztas.hu/en/ugyintezes">
+    REGISZTRÁLJ MOST
+    </a>
+    `;
 }
 
-let d=coordString.match(/(\d+)°(\d+)[′']([\d.]+)[″"]?([NS])\s*(\d+)°(\d+)[′']([\d.]+)[″"]?([EW])/);
+function getRadius(voters){ return Math.sqrt(voters)*4; }
 
-if(d){
-
-let lat =
-parseFloat(d[1]) +
-parseFloat(d[2])/60 +
-parseFloat(d[3])/3600;
-
-let lon =
-parseFloat(d[5]) +
-parseFloat(d[6])/60 +
-parseFloat(d[7])/3600;
-
-if(d[4]==="S") lat=-lat;
-if(d[8]==="W") lon=-lon;
-
-return [lat,lon];
-
+function loadData(file){
+    fetch(file).then(r=>r.json()).then(data=>{
+        clusterGroup.clearLayers();
+        currentMarkers=[];
+        let count=0;
+        data.list.forEach(place=>{
+            let coords=parseCoordinates(place.kuvi_gps||place.gps);
+            if(!coords) return;
+            let circle=L.circleMarker(coords,{
+                radius:getRadius(place.letszam),
+                color:"#0066ff",
+                fillColor:"#0066ff",
+                fillOpacity:0.6,
+                weight:1
+            });
+            circle.bindPopup(createPopup(place));
+            clusterGroup.addLayer(circle);
+            currentMarkers.push(circle);
+            count++;
+        });
+        document.getElementById("counter").innerText=count;
+    });
 }
 
-return null;
+// --- Timeline Slider Setup ---
 
-}
+// Example: build historical file array dynamically
+// Here you can replace with actual dates / filenames
+historicalFiles = ["data-20260308.json","data-20260309.json","data.json"];
+slider.max = historicalFiles.length-1;
+slider.value=historicalFiles.length-1;
+sliderDate.innerText = historicalFiles[slider.value].replace("data-","").replace(".json","");
 
+loadData(historicalFiles[slider.value]);
 
-/* BUBBLE SIZE */
-
-function getRadius(voters){
-
-let zoom=map.getZoom();
-
-let base=Math.sqrt(voters)*4;
-
-let scale=zoom/3;
-
-return base*scale;
-
-}
-
-
-/* FORMAT NUMBERS */
-
-function formatNumber(num){
-
-return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-}
-
-
-/* FORMAT TIME */
-
-function formatTime(time){
-
-let parts=time.split("-");
-
-return parts[0].padStart(2,"0")+":00 - "+parts[1].padStart(2,"0")+":00";
-
-}
-
-
-/* LOAD DATA */
-
-Promise.all([
-fetch("data.json").then(r=>r.json()),
-fetch("previous_data.json").then(r=>r.json()).catch(()=>null)
-])
-
-.then(([data,previous])=>{
-
-let previousMap={};
-
-if(previous){
-
-previous.list.forEach(p=>{
-previousMap[p.taz_nev_en]=p.letszam;
-});
-
-}
-
-let count=0;
-
-data.list.forEach(place=>{
-
-let coords=parseCoordinates(place.kuvi_gps || place.gps);
-
-if(!coords) return;
-
-let voters=place.letszam;
-
-let prev=previousMap[place.taz_nev_en] || voters;
-
-let growth=voters>prev;
-
-let akadaly = place.akadaly==="I" ? "Igen" : "Nem";
-
-let popup = `
-<b>${place.taz_nev_en}</b><br><br>
-
-<a class="link" target="_blank"
-href="https://vtr.valasztas.hu/ogy2026/valasztopolgaroknak/kulkepviseletek-listaja?tab=kulkepviseletek-listaja">
-Külképviselet kereső
-</a>
-<br><br>
-
-Névjegyzékbe vett választópolgárok száma: ${formatNumber(voters)}<br>
-Akadálymentes: ${akadaly}<br>
-Szavazás ideje: ${formatTime(place.idotartam)}<br><br>
-
-<a class="registerButton" target="_blank"
-href="https://www.valasztas.hu/en/ugyintezes">
-REGISZTRÁLJ MOST
-</a>
-`;
-
-let circle=L.circleMarker(coords,{
-radius:getRadius(voters),
-color:"#0066ff",
-fillColor:"#0066ff",
-fillOpacity:0.6,
-weight:1
-}).addTo(map);
-
-circle.bindPopup(popup);
-
-if(growth){
-
-let pulse=0;
-
-let interval=setInterval(()=>{
-
-pulse++;
-
-circle.setStyle({
-fillOpacity: pulse%2 ? 1 : 0.6
-});
-
-if(pulse>6){
-clearInterval(interval);
-circle.setStyle({fillOpacity:0.6});
-}
-
-},400);
-
-}
-
-markers.push({marker:circle,voters:voters});
-
-count++;
-
-});
-
-document.getElementById("counter").innerText=count;
-
-});
-
-
-map.on("zoomend",function(){
-
-markers.forEach(m=>{
-m.marker.setRadius(getRadius(m.voters));
-});
-
+slider.addEventListener("input",()=>{
+    let idx=parseInt(slider.value);
+    loadData(historicalFiles[idx]);
+    sliderDate.innerText = historicalFiles[idx].replace("data-","").replace(".json","");
 });
 
 </script>
