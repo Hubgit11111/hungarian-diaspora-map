@@ -1,173 +1,235 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<title>Hungarian Voters Abroad – 2026</title>
 
-<!-- Leaflet CSS -->
+<meta charset="utf-8">
+<title>Hungarian Diaspora Voting Map</title>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-body { margin:0; font-family:Arial; }
-#map { height:100vh; }
-#markerCount {
-    position:absolute;
-    top:10px;
-    right:10px;
-    padding:8px;
-    background:white;
-    z-index:999;
-    font-family:Arial;
-    border-radius:4px;
-    box-shadow:0 0 5px rgba(0,0,0,0.3);
+
+body{
+margin:0;
+font-family:Arial, Helvetica, sans-serif;
 }
+
+#map{
+height:100vh;
+width:100%;
+}
+
+.counterBox{
+position:absolute;
+top:10px;
+right:10px;
+background:white;
+padding:8px 12px;
+border-radius:6px;
+box-shadow:0 0 6px rgba(0,0,0,0.25);
+font-size:14px;
+z-index:1000;
+}
+
+.popupLink{
+color:#0057b7;
+text-decoration:none;
+font-weight:bold;
+}
+
 </style>
+
 </head>
 
 <body>
 
 <div id="map"></div>
-<div id="markerCount">Loading markers...</div>
 
-<!-- Leaflet JS -->
+<div class="counterBox">
+City markers displayed: <span id="counter">0</span>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// Initialize map
-var map = L.map('map').setView([30,10],2);
+
+const map = L.map('map').setView([20,10],2);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© OpenStreetMap'
+maxZoom:19
 }).addTo(map);
 
-// Robust DMS/Decimal parser
-function parseCoordinates(coordStr){
-function parseCoordinates(coordString) {
 
-    if (!coordString) return null;
+function parseCoordinates(coordString){
 
-    coordString = coordString.trim();
+if(!coordString) return null;
 
-    // CASE 1: decimal with N/E/S/W (Abu Dhabi format)
-    let match = coordString.match(/([0-9.]+)\s*([NS])\s*,?\s*([0-9.]+)\s*([EW])/i);
-    if (match) {
+coordString = coordString.trim();
 
-        let lat = parseFloat(match[1]);
-        let lon = parseFloat(match[3]);
 
-        if (match[2].toUpperCase() === "S") lat = -lat;
-        if (match[4].toUpperCase() === "W") lon = -lon;
+// format: 24.488289N ,54.373057E
+let m = coordString.match(/([0-9.]+)\s*([NS])\s*,?\s*([0-9.]+)\s*([EW])/i);
 
-        return [lat, lon];
-    }
+if(m){
 
-    // CASE 2: simple decimal
-    if (coordString.includes(",")) {
+let lat=parseFloat(m[1]);
+let lon=parseFloat(m[3]);
 
-        let parts = coordString.split(",");
-        let lat = parseFloat(parts[0]);
-        let lon = parseFloat(parts[1]);
+if(m[2].toUpperCase()==="S") lat=-lat;
+if(m[4].toUpperCase()==="W") lon=-lon;
 
-        if (!isNaN(lat) && !isNaN(lon)) {
-            return [lat, lon];
-        }
-    }
+return [lat,lon];
 
-    // CASE 3: DMS format (Montreal style)
-    let dmsMatch = coordString.match(/(\d+)°(\d+)[′']([\d.]+)[″"]?([NS])\s*(\d+)°(\d+)[′']([\d.]+)[″"]?([EW])/);
-
-    if (dmsMatch) {
-
-        let lat =
-            parseFloat(dmsMatch[1]) +
-            parseFloat(dmsMatch[2]) / 60 +
-            parseFloat(dmsMatch[3]) / 3600;
-
-        let lon =
-            parseFloat(dmsMatch[5]) +
-            parseFloat(dmsMatch[6]) / 60 +
-            parseFloat(dmsMatch[7]) / 3600;
-
-        if (dmsMatch[4] === "S") lat = -lat;
-        if (dmsMatch[8] === "W") lon = -lon;
-
-        return [lat, lon];
-    }
-
-    // CASE 4: degrees with symbols (Bern style)
-    let degMatch = coordString.match(/([\d.]+)°\s*([NS])?,?\s*([\d.]+)°\s*([EW])/);
-
-    if (degMatch) {
-
-        let lat = parseFloat(degMatch[1]);
-        let lon = parseFloat(degMatch[3]);
-
-        if (degMatch[2] === "S") lat = -lat;
-        if (degMatch[4] === "W") lon = -lon;
-
-        return [lat, lon];
-    }
-
-    return null;
 }
 
-// Store markers
-let markers=[];
 
-// Load JSON data
-fetch("data.json") // replace with your JSON path
-.then(res => res.json())
-.then(data => {
-    data.list.forEach(place => {
-        let coords = place.kuvi_gps || place.gps;
-        let [lat, lon] = parseCoordinates(coords);
+// format: decimal
+if(coordString.includes(",")){
 
-        if(isNaN(lat) || isNaN(lon)){
-            console.warn("Skipped city:", place.taz_nev_en, "coords:", coords);
-            return;
-        }
+let p=coordString.split(",");
 
-        let accessibility = place.akadaly==='I' ? "Accessible" : "Not accessible";
+let lat=parseFloat(p[0]);
+let lon=parseFloat(p[1]);
 
-        let popup = `
-<b>${place.taz_nev_en}</b><br>
-Registered voters: ${place.letszam}<br>
-<a href="https://vtr.valasztas.hu/ogy2026/valasztopolgaroknak/kulkepviseletek-listaja?tab=kulkepviseletek-listaja" target="_blank">Venue address</a><br>
+if(!isNaN(lat) && !isNaN(lon)){
+return [lat,lon];
+}
+
+}
+
+
+// DMS format
+let d=coordString.match(/(\d+)°(\d+)[′']([\d.]+)[″"]?([NS])\s*(\d+)°(\d+)[′']([\d.]+)[″"]?([EW])/);
+
+if(d){
+
+let lat =
+parseFloat(d[1]) +
+parseFloat(d[2])/60 +
+parseFloat(d[3])/3600;
+
+let lon =
+parseFloat(d[5]) +
+parseFloat(d[6])/60 +
+parseFloat(d[7])/3600;
+
+if(d[4]==="S") lat=-lat;
+if(d[8]==="W") lon=-lon;
+
+return [lat,lon];
+
+}
+
+
+// degrees with symbol
+let g=coordString.match(/([\d.]+)°\s*([NS])?,?\s*([\d.]+)°\s*([EW])/);
+
+if(g){
+
+let lat=parseFloat(g[1]);
+let lon=parseFloat(g[3]);
+
+if(g[2]==="S") lat=-lat;
+if(g[4]==="W") lon=-lon;
+
+return [lat,lon];
+
+}
+
+return null;
+
+}
+
+
+
+fetch("data.json")
+
+.then(r=>r.json())
+
+.then(data=>{
+
+let count=0;
+
+data.list.forEach(place=>{
+
+let coords=parseCoordinates(place.kuvi_gps || place.gps);
+
+if(!coords) return;
+
+let voters = place.letszam;
+
+let zoom = map.getZoom();
+
+let radius = Math.sqrt(voters) * (zoom/2);
+
+
+let accessibility = place.akadaly==="I" ? "Accessible" : "Not accessible";
+
+let popup = `
+<b>${place.taz_nev_en}</b><br><br>
+
+<a class="popupLink" target="_blank"
+href="https://vtr.valasztas.hu/ogy2026/valasztopolgaroknak/kulkepviseletek-listaja?tab=kulkepviseletek-listaja">
+Venue address
+</a>
+<br><br>
+
+Registered voters: ${voters}<br>
 Accessibility: ${accessibility}<br>
-Voting hours: ${place.idotartam}<br>
-<a href="https://www.valasztas.hu/en/ugyintezes" target="_blank"><b>REGISTER TO VOTE NOW</b></a>
+Voting time: ${place.idotartam}<br><br>
+
+<a class="popupLink" target="_blank"
+href="https://www.valasztas.hu/en/ugyintezes">
+REGISTER TO VOTE NOW
+</a>
 `;
 
-        let marker = L.circleMarker([lat,lon],{
-            radius: Math.sqrt(place.letszam),
-            color: "#2A81CB",
-            fillColor: "#2A81CB",
-            fillOpacity:0.45,
-            weight:1
-        }).addTo(map).bindPopup(popup);
 
-        markers.push({marker: marker, voters: place.letszam});
-    });
+let circle=L.circleMarker(coords,{
+radius:radius,
+color:"#c40000",
+fillColor:"#e60000",
+fillOpacity:0.7,
+weight:1
+}).addTo(map);
 
-    function updateMarkerSize(){
-        let zoom = map.getZoom();
-        markers.forEach(m => {
-            let scale = Math.pow(zoom/5,1.2);
-            let minRadius = 2;
-            let newRadius = Math.max(Math.sqrt(m.voters)*scale, minRadius);
-            m.marker.setRadius(newRadius);
-        });
-    }
+circle.bindPopup(popup);
 
-    map.on('zoomend', updateMarkerSize);
-    updateMarkerSize();
+count++;
 
-    document.getElementById('markerCount').innerText = "City markers displayed: " + markers.length;
-})
-.catch(error => {
-    console.error("Failed to load data:", error);
-    document.getElementById('markerCount').innerText = "Failed to load markers";
 });
+
+
+document.getElementById("counter").innerText=count;
+
+
+map.on("zoomend",function(){
+
+map.eachLayer(function(layer){
+
+if(layer instanceof L.CircleMarker){
+
+let voters = layer.getPopup().getContent().match(/Registered voters: (\d+)/);
+
+if(voters){
+
+let v=parseInt(voters[1]);
+
+let zoom=map.getZoom();
+
+layer.setRadius(Math.sqrt(v)*(zoom/2));
+
+}
+
+}
+
+});
+
+});
+
+
+});
+
 </script>
 
 </body>
