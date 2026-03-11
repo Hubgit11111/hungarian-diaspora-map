@@ -48,7 +48,7 @@ body { margin:0; font-family:Arial, Helvetica, sans-serif; }
 
 .topCities{
     position:absolute;
-    top:170px;
+    bottom:30px;
     left:10px;
     background:white;
     padding:12px 16px;
@@ -294,14 +294,14 @@ function createPopup(place){
     return `
     <b>${place.taz_nev}</b><br><br>
 
-    <a class="link" target="_blank"
-    href="https://vtr.valasztas.hu/ogy2026/valasztopolgaroknak/kulkepviseletek-listaja?tab=kulkepviseletek-listaja">
-    Külképviselet kereső
-    </a><br><br>
-
     Névjegyzékbe vett választópolgárok száma: ${formatNumber(place.letszam)}<br>
     Akadálymentes: ${akadaly}<br>
     Szavazás ideje: ${formatTime(place.idotartam)}<br><br>
+
+<a class="link" target="_blank"
+    href="https://vtr.valasztas.hu/ogy2026/valasztopolgaroknak/kulkepviseletek-listaja?tab=kulkepviseletek-listaja">
+    Külképviselet kereső
+    </a><br><br>
 
     <a class="registerButton" target="_blank"
     href="https://www.valasztas.hu/ugyintezes">
