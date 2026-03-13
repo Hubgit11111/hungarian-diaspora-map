@@ -68,11 +68,6 @@ body { margin:0; font-family:Arial, Helvetica, sans-serif; }
     margin-bottom:6px;
 }
     
-.topCities.collapsed{
-    max-height:40px;
-    overflow:hidden;
-}
-    
 /* COUNTER */
 
 .counterBox{
@@ -171,7 +166,7 @@ body { margin:0; font-family:Arial, Helvetica, sans-serif; }
 
 .topCities{
     top:auto;
-    bottom:10px;
+    bottom:40px;
     left:10px;
     right:10px;
     max-width:none;
@@ -180,6 +175,11 @@ body { margin:0; font-family:Arial, Helvetica, sans-serif; }
     overflow-y:auto;
 }
 
+    .topCities.collapsed{
+    max-height:70px;
+    overflow:hidden;
+}
+    
 /* POPUPS (keep readable but not huge) */
 
 .leaflet-popup-content-wrapper{
@@ -191,7 +191,14 @@ body { margin:0; font-family:Arial, Helvetica, sans-serif; }
     line-height:1.6;
    
 }
+    
+/* COLLAPSED TOP CITIES PANEL (mobile only) */
 
+.topCities.collapsed{
+    max-height:70px;
+    overflow:hidden;
+}
+    
 /* HEADER */
 
 .headerBox{
