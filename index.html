@@ -67,7 +67,12 @@ body { margin:0; font-family:Arial, Helvetica, sans-serif; }
     font-weight:bold;
     margin-bottom:6px;
 }
-
+    
+.topCities.collapsed{
+    max-height:40px;
+    overflow:hidden;
+}
+    
 /* COUNTER */
 
 .counterBox{
@@ -263,10 +268,10 @@ Szavazás napja: 2026. április 12.
 
 </div>
 
-<div class="topCities">
+<div class="topCities collapsed">
 
-<div class="topCitiesTitle">
-Szavazóhelyek regisztráció alapján
+<div class="topCitiesTitle" onclick="toggleCities()">
+Szavazóhelyek regisztráció alapján <span id="citiesArrow">▼</span>
 </div>
 
 <div id="topCitiesList"></div>
@@ -486,6 +491,23 @@ document.getElementById("topCitiesList").innerHTML=html;
 
 });
 
+    /* COLLAPSIBLE TOP CITIES PANEL */
+
+function toggleCities(){
+
+    const panel=document.querySelector(".topCities");
+    const arrow=document.getElementById("citiesArrow");
+
+    panel.classList.toggle("collapsed");
+
+    if(panel.classList.contains("collapsed")){
+        arrow.innerHTML="▲";
+    }else{
+        arrow.innerHTML="▼";
+    }
+
+}
+    
 /* UPDATE BUBBLE SIZE */
 function zoomToCity(city){
 
