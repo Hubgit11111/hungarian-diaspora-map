@@ -411,72 +411,74 @@ function getRadius(voters,zoom){
 
 /* LOAD DATA */
 
+/* LOAD DATA */
+
 fetch("data.json")
-   .then(data => {
+.then(response => response.json())
+.then(data => {
 
-    const places = data.list || data;
+const places = data.list || data;
 
-    places.forEach(place => {
+clusterGroup.clearLayers();
+markers=[];
 
-    clusterGroup.clearLayers();
-    markers=[];
+let count=0;
+let ranking=[];
 
-    let count=0;
-    let ranking=[];
+places.forEach(place=>{
 
-    data.list.forEach(place=>{
+    let coords=parseCoordinates(place.kuvi_gps||place.gps);
+    if(!coords) return;
 
-        let coords=parseCoordinates(place.kuvi_gps||place.gps);
-        if(!coords) return;
+    let circle=L.circleMarker(coords,{
 
-        let circle=L.circleMarker(coords,{
+        radius:getRadius(place.letszam,map.getZoom()),
+        color:"#0066ff",
+        fillColor:"#0066ff",
+        fillOpacity:0.6,
+        weight:1
 
-            radius:getRadius(place.letszam,map.getZoom()),
-            color:"#0066ff",
-            fillColor:"#0066ff",
-            fillOpacity:0.6,
-            weight:1
-
-        });
-
-        circle.bindPopup(createPopup(place));
-
-        circle.on("mouseover",function(){
-            this.setStyle({weight:2,fillOpacity:0.8});
-        });
-
-        circle.on("mouseout",function(){
-            this.setStyle({weight:1,fillOpacity:0.6});
-        });
-
-        clusterGroup.addLayer(circle);
-
-        markers.push({
-            marker:circle,
-            voters:place.letszam
-        });
-        cityLookup[place.taz_nev]=coords;
-        
-        ranking.push(place);
-
-        count++;
     });
 
-    document.getElementById("counter").innerText=count;
+    circle.bindPopup(createPopup(place));
 
-    /* TOP CITIES */
-
-    ranking.sort((a,b)=>b.letszam-a.letszam);
-
-    let top=ranking.slice(0,20);
-
-    let html="";
-
-    top.forEach((p,i)=>{
-    html+=(i+1)+". <span class='cityLink' onclick=\"zoomToCity('"+p.taz_nev+"')\">"+p.taz_nev+"</span> — "+formatNumber(p.letszam)+"<br>";
+    circle.on("mouseover",function(){
+        this.setStyle({weight:2,fillOpacity:0.8});
     });
 
-    document.getElementById("topCitiesList").innerHTML=html;
+    circle.on("mouseout",function(){
+        this.setStyle({weight:1,fillOpacity:0.6});
+    });
+
+    clusterGroup.addLayer(circle);
+
+    markers.push({
+        marker:circle,
+        voters:place.letszam
+    });
+
+    cityLookup[place.taz_nev]=coords;
+
+    ranking.push(place);
+
+    count++;
+});
+
+document.getElementById("counter").innerText=count;
+
+/* TOP CITIES */
+
+ranking.sort((a,b)=>b.letszam-a.letszam);
+
+let top=ranking.slice(0,20);
+
+let html="";
+
+top.forEach((p,i)=>{
+html+=(i+1)+". <span class='cityLink' onclick=\"zoomToCity('"+p.taz_nev+"')\">"+p.taz_nev+"</span> — "+formatNumber(p.letszam)+"<br>";
+});
+
+document.getElementById("topCitiesList").innerHTML=html;
 
 });
 
