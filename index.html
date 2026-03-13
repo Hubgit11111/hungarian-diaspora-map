@@ -456,7 +456,9 @@ places.forEach(place=>{
 
     });
 
-    circle.bindPopup(createPopup(place));
+    circle.bindPopup(createPopup(place),{
+    offset: L.point(0,-40)
+    });
 
     circle.on("mouseover",function(){
         this.setStyle({weight:2,fillOpacity:0.8});
