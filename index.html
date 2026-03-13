@@ -411,7 +411,12 @@ function getRadius(voters,zoom){
 
 /* LOAD DATA */
 
-fetch("data.json").then(r=>r.json()).then(data=>{
+fetch("data.json")
+   .then(data => {
+
+    const places = data.list || data;
+
+    places.forEach(place => {
 
     clusterGroup.clearLayers();
     markers=[];
